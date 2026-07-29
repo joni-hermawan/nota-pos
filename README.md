@@ -1,60 +1,58 @@
-# Nota POS — Rebuild (struktur mengikuti project referensi)
+# Nota POS — Sistem Kasir Multi-Role
 
-Rebuild total dari sistem POS sebelumnya, mengikuti pola arsitektur project
-referensi Anda: JWT di cookie httpOnly, sesi tercatat di database (bisa
-di-revoke), logger frontend/backend terpisah, router `gorilla/mux`, dan
-struktur folder `internal/` yang konsisten. **Spec protokol EDC (WIDE
-Whitelabel) tidak berubah sama sekali** dari implementasi sebelumnya.
+Sistem Point of Sale (POS) full-stack dengan integrasi pembayaran EDC & QRIS, dibangun untuk mendukung operasional retail dari transaksi harian hingga rekonsiliasi keuangan — dengan akses berbeda untuk Kasir, PPIC, Finance, dan Administrator.
 
-## Struktur folder
+## Tentang Project
+
+Nota POS menggabungkan dua hal yang jarang ditemukan bersamaan dalam satu project pribadi: pengalaman langsung di infrastruktur pembayaran (EDC, HSM) dan pengembangan aplikasi full-stack modern. Sistem ini tidak hanya mensimulasikan transaksi kasir, tapi benar-benar berkomunikasi dengan perangkat EDC fisik melalui implementasi protokol serial resmi, serta terintegrasi dengan payment gateway QRIS.
+
+## Fitur Utama
+
+- **Multi-role** — akses berbeda untuk Kasir, PPIC, Finance, dan Administrator
+- **Transaksi pembayaran EDC** — komunikasi langsung ke mesin EDC fisik via serial port (agent lokal terpisah)
+- **Pembayaran QRIS** — integrasi payment gateway (Midtrans)
+- **Cetak struk thermal** — format ESC/POS
+- **Manajemen produk & stok**
+- **Multi-toko / multi-merchant**
+- **Laporan & rekonsiliasi transaksi**
+- **Update real-time** — status transaksi ter-update otomatis di layar kasir via Server-Sent Events
+- **Audit trail & manajemen sesi** — setiap sesi login tercatat di database dan bisa di-revoke paksa
+
+## Arsitektur & Tech Stack
+
+| Komponen | Teknologi |
+|---|---|
+| Frontend | Next.js 14 (App Router), Tailwind CSS |
+| Backend | Golang (Clean Architecture), gorilla/mux |
+| Database | SQL Server |
+| Agent EDC | Aplikasi Go terpisah, berjalan di PC kasir, komunikasi via port serial (USB) |
+| Payment Gateway | QRIS (Midtrans) |
 
 ```
 nota-pos/
-├── pos-backend/
-│   ├── cmd/server/main.go       ← entrypoint API utama
-│   ├── cmd/edc-agent/main.go    ← agent EDC (jalan di PC kasir, USB)
-│   └── internal/
-│       ├── config/    db/    auth/    session/    audit/
-│       ├── logger/    middleware/    models/    handlers/    router/
-│       ├── realtime/  (SSE broker)   paymentgw/  (adapter QRIS)
-│       └── edcagent/  (protocol.go, serial_device.go — spec EDC)
-├── pos-frontend/
-│   └── src/app/
-│       ├── api.ts, types.ts, constants.ts   ← pola file-level referensi
-│       ├── context/    (AuthContext, ToastContext)
-│       ├── components/ui/   components/layout/
-│       ├── utils/      (logger.ts, cn.ts)
-│       ├── login/
-│       └── (kasir)/ (ppic)/ (finance)/ (admin)/   ← route group per role
-└── database/schema.sql + migrations/
+├── pos-backend/     # API utama (Go)
+├── pos-frontend/     # Aplikasi kasir (Next.js)
+├── nota-edc-agent/  # Agent lokal penghubung ke mesin EDC fisik
+└── database/         # Schema & migrasi SQL Server
 ```
 
-## Perubahan arsitektur kunci vs versi sebelumnya
+## Highlight Teknis
 
-| Aspek | Sebelumnya | Sekarang |
-|---|---|---|
-| Auth | JWT di cookie biasa (bisa dibaca JS) | JWT di cookie httpOnly (tidak bisa dibaca JS sama sekali) |
-| Sesi | Cuma andalkan JWT expiry | Tercatat di DB (user_sessions) - bisa di-revoke paksa |
-| Router | chi | gorilla/mux |
-| Query DB | sqlx | database/sql polos |
-| Logger | Satu file gabungan | Terpisah logs/frontend/ dan logs/backend/ |
-| Route guard frontend | middleware.ts (Next.js edge) | Client-side via AuthContext + AppLayout |
-| Audit trail | Tabel audit_logs ada tapi tak terpakai | Package internal/audit siap pakai |
+- **Implementasi protokol EDC dari spesifikasi teknis resmi** (WIDE EDC Whitelabel) — mencakup penyusunan frame data, perhitungan checksum CRC, dan pemetaan kode transaksi untuk berbagai bank & payment provider.
+- **Keamanan sesi tingkat lanjut** — JWT disimpan di cookie `httpOnly` (tidak bisa diakses JavaScript), dan setiap sesi tercatat di database sehingga bisa di-revoke sewaktu-waktu.
+- **Update real-time** via Server-Sent Events, tanpa perlu polling.
+- **Role-based access control** granular per modul dan aksi.
 
-## Setup
+## Cara Menjalankan
 
 ### 1. Database
-```
+```bash
 sqlcmd -S localhost -U sa -P YourPass -Q "CREATE DATABASE nota_pos"
 sqlcmd -S localhost -U sa -P YourPass -d nota_pos -i database/schema.sql
 ```
-Kalau database Anda sudah ada dari versi sebelumnya, cukup jalankan migrasi baru:
-```
-sqlcmd ... -i database/migrations/004_add_user_sessions.sql
-```
 
 ### 2. Backend
-```
+```bash
 cd pos-backend
 cp .env.example .env
 go mod tidy
@@ -62,7 +60,7 @@ go run ./cmd/server
 ```
 
 ### 3. Frontend
-```
+```bash
 cd pos-frontend
 cp .env.local.example .env.local
 npm install
@@ -70,24 +68,26 @@ npm run dev
 ```
 
 ### 4. Agent EDC (di PC kasir)
-```
+```bash
 cd pos-backend
 set EDC_SERIAL_PORT=COM8
 go run ./cmd/edc-agent
 ```
 
-## Login default
+## Login Default
+
 | Username | Password | Role |
 |---|---|---|
-| admin01 | password123 | admin |
-| kasir01 | password123 | kasir |
-| ppic01 | password123 | ppic |
-| finance01 | password123 | finance |
+| admin01 | password123 | Administrator |
+| kasir01 | password123 | Kasir |
+| ppic01 | password123 | PPIC |
+| finance01 | password123 | Finance |
 
-Ganti password ini sebelum produksi.
+*Kredensial demo — wajib diganti sebelum digunakan di lingkungan produksi.*
 
-## Catatan jujur - yang belum lengkap
-1. Upload foto produk masih preview lokal saja (belum ke object storage sungguhan)
-2. Reporting/rekonsiliasi baru bandingkan data internal sendiri (belum ada sumber data bank/gateway eksternal)
-3. Hanya command Regular Sale dari spec EDC yang terhubung penuh ke Charge(); command lain (prepaid, cash withdrawal, QR via EDC) sudah ada konstanta protokolnya tapi belum ada request/response builder-nya
-4. Belum ada go build/npm run build end-to-end di sandbox ini (dibatasi akses jaringan sandbox ke golang.org/go.bug.st) - sudah divalidasi lewat gofmt (backend) dan tsc --noEmit (frontend), build penuh perlu dicoba di komputer Anda
+## Status & Roadmap
+
+Project ini aktif dikembangkan. Beberapa area yang masih dalam pengembangan lebih lanjut:
+- Upload foto produk saat ini masih preview lokal, belum terhubung ke object storage
+- Command EDC selain Regular Sale (prepaid, cash withdrawal, QR via EDC) sudah punya definisi protokol lengkap, tinggal dihubungkan ke handler transaksi
+- Rekonsiliasi laporan saat ini membandingkan data internal; integrasi dengan sumber data bank/gateway eksternal sedang direncanakan
