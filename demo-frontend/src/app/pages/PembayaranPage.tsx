@@ -55,7 +55,8 @@ export function PembayaranPage() {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-6 p-8">
         <ReceiptPreview
-          storeName={user?.storeName || user?.merchantName || "Toko"}
+          merchantName={user?.merchantName || "Toko"}
+          storeName={user?.storeName || ""}
           storeAddress={user?.storeAddress || user?.merchantAddress || ""}
           logoSrc={user?.merchantLogoUrl || null}
           invoiceNo={selected.invoiceNo}

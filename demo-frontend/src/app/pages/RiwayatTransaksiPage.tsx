@@ -69,6 +69,7 @@ export function RiwayatTransaksiPage() {
         ) : (
           <>
             <ReceiptPreview
+              merchantName={user?.merchantName || "Toko"}
               storeName={detail.storeName}
               storeAddress={detail.storeAddress}
               logoSrc={user?.merchantLogoUrl || null}

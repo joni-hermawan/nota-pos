@@ -152,7 +152,8 @@ export function BrandingPage() {
         <div>
           <p className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-soft">Pratinjau di struk</p>
           <ReceiptPreview
-            storeName={name || "Nama Toko Anda"}
+            merchantName={name || "Nama Toko Anda"}
+            storeName=""
             storeAddress={address || "Alamat toko"}
             logoSrc={logoPreview}
             invoiceNo="INV-000123"

@@ -1,8 +1,10 @@
-import { Logo } from "../layout/Logo";
-
 export type ReceiptItem = { name: string; qty: number; price: number };
 
 type Props = {
+  // Nama bisnis merchant (mis. "Kopi & Roti Nusantara") - ini yang tampil
+  // sebagai header struk, BUKAN nama produk POS-nya, supaya struk yang
+  // diterima pembeli mencerminkan toko tempat mereka belanja.
+  merchantName: string;
   storeName: string;
   storeAddress: string;
   logoSrc?: string | null;
@@ -16,12 +18,16 @@ type Props = {
   paidAt: string;
 };
 
-export function ReceiptPreview({ storeName, storeAddress, logoSrc, invoiceNo, cashierName, items, total, method, amountReceived, change, paidAt }: Props) {
+export function ReceiptPreview({ merchantName, storeName, storeAddress, logoSrc, invoiceNo, cashierName, items, total, method, amountReceived, change, paidAt }: Props) {
   return (
     <div id="print-receipt" className="mx-auto w-[280px] bg-white px-4 py-6 font-mono text-[11px] leading-relaxed text-ink shadow-sm">
       <div className="flex flex-col items-center gap-1 text-center">
-        <Logo src={logoSrc} size={26} />
-        <p className="font-semibold">{storeName}</p>
+        {logoSrc && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={logoSrc} alt={merchantName} style={{ height: 26 }} className="object-contain" />
+        )}
+        <p className="font-display text-sm font-semibold">{merchantName}</p>
+        {storeName && storeName !== merchantName && <p className="text-ink-soft">{storeName}</p>}
         <p className="text-ink-soft">{storeAddress}</p>
       </div>
       <div className="my-3 border-t border-dashed border-ink/30" />

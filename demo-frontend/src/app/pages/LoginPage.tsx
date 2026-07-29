@@ -8,6 +8,15 @@ import { Logo } from "../components/layout/Logo";
 import { Btn } from "../components/ui/Btn";
 import type { MerchantBranding } from "../types";
 
+// Akun demo - tombol di bawah form login mengisi field ini otomatis,
+// supaya recruiter tidak perlu mengetik/menghafal kredensial manual.
+const DEMO_ACCOUNTS: { username: string; password: string; label: string }[] = [
+  { username: "admin01", password: "demo123", label: "Administrator" },
+  { username: "kasir01", password: "demo123", label: "Kasir" },
+  { username: "ppic01", password: "demo123", label: "PPIC" },
+  { username: "finance01", password: "demo123", label: "Finance" },
+];
+
 export function LoginPage({ branding }: { branding?: MerchantBranding | null }) {
   const { login, loginError } = useAuth();
   const [username, setUsername] = useState("");
@@ -21,6 +30,11 @@ export function LoginPage({ branding }: { branding?: MerchantBranding | null }) 
     setSubmitting(false);
     // Kalau berhasil, AppInner (App.tsx) otomatis merender AppLayout begitu
     // `user` ter-update lewat AuthContext - tidak perlu redirect manual di sini.
+  }
+
+  function fillDemoAccount(acc: (typeof DEMO_ACCOUNTS)[number]) {
+    setUsername(acc.username);
+    setPassword(acc.password);
   }
 
   return (
@@ -104,14 +118,21 @@ export function LoginPage({ branding }: { branding?: MerchantBranding | null }) 
           />
 
           <div className="mt-6 rounded-md border border-dashed border-brass/40 bg-brass/5 px-3 py-3 text-xs text-ink-soft">
-            <p className="mb-1.5 font-medium text-ink">Mode Demo — coba salah satu akun ini:</p>
-            <ul className="space-y-0.5 font-mono">
-              <li>admin01 / demo123 <span className="text-ink-soft/70">(Administrator)</span></li>
-              <li>kasir01 / demo123 <span className="text-ink-soft/70">(Kasir)</span></li>
-              <li>ppic01 / demo123 <span className="text-ink-soft/70">(PPIC)</span></li>
-              <li>finance01 / demo123 <span className="text-ink-soft/70">(Finance)</span></li>
-            </ul>
-            <p className="mt-1.5 text-ink-soft/70">Data dummy, reset otomatis setiap refresh halaman.</p>
+            <p className="mb-2 font-medium text-ink">Mode Demo — klik salah satu untuk isi otomatis:</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {DEMO_ACCOUNTS.map((acc) => (
+                <button
+                  key={acc.username}
+                  type="button"
+                  onClick={() => fillDemoAccount(acc)}
+                  className="rounded-md border border-brass/30 bg-white px-2.5 py-1.5 text-left font-mono text-[11px] text-ink transition-colors hover:border-brass hover:bg-brass/10"
+                >
+                  <span className="block font-medium">{acc.label}</span>
+                  <span className="text-ink-soft/70">{acc.username}</span>
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-ink-soft/70">Data dummy, reset otomatis setiap refresh halaman.</p>
           </div>
         </form>
       </div>
