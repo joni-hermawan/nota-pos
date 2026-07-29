@@ -1,0 +1,11 @@
+node_modules/
+.next/
+logs/
+*.log
+.env
+.env.local
+*.zip
+tsconfig.tsbuildinfo
+.DS_Store
+Thumbs.db
+*.exe
