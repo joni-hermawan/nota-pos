@@ -10,7 +10,7 @@ import { transactionApi } from "../api";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { PAYMENT_METHOD_LABEL } from "../constants";
-import type { PendingTransaction, PaymentMethod } from "../types";
+import type { PendingTransaction, PaymentMethod, TransactionDetailItem } from "../types";
 
 export function PembayaranPage() {
   const { user } = useAuth();
@@ -22,6 +22,10 @@ export function PembayaranPage() {
   const [selected, setSelected] = useState<PendingTransaction | null>(null);
   const [paid, setPaid] = useState(false);
   const [paidInfo, setPaidInfo] = useState<{ method: PaymentMethod; amountReceived?: number } | null>(null);
+  // Detail item asli transaksi (nama, qty, harga per item) - diambil dari
+  // transactionApi.detail() setelah pembayaran berhasil, supaya struk
+  // menampilkan rincian produk sungguhan, bukan cuma "N item".
+  const [receiptItems, setReceiptItems] = useState<TransactionDetailItem[]>([]);
 
   function loadPending() {
     setLoading(true);
@@ -48,6 +52,7 @@ export function PembayaranPage() {
     setSelected(null);
     setPaid(false);
     setPaidInfo(null);
+    setReceiptItems([]);
     loadPending();
   }
 
@@ -61,7 +66,7 @@ export function PembayaranPage() {
           logoSrc={user?.merchantLogoUrl || null}
           invoiceNo={selected.invoiceNo}
           cashierName={user?.name ?? "Kasir"}
-          items={[{ name: `${selected.itemCount} item`, qty: 1, price: selected.total }]}
+          items={receiptItems.map((i) => ({ name: i.name, qty: i.qty, price: i.unitPrice }))}
           total={selected.total}
           method={paidInfo ? PAYMENT_METHOD_LABEL[paidInfo.method] : "-"}
           amountReceived={paidInfo?.amountReceived}
@@ -93,6 +98,10 @@ export function PembayaranPage() {
               setPaid(true);
               setPaidInfo(info);
               showToast({ type: "success", message: "Pembayaran berhasil", description: selected.invoiceNo });
+              transactionApi
+                .detail(selected.id)
+                .then((d) => setReceiptItems(d.items))
+                .catch(() => setReceiptItems([]));
             }}
           />
         </div>

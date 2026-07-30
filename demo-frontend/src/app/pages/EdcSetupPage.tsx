@@ -1,114 +1,109 @@
 // src/app/pages/EdcSetupPage.tsx
+//
+// ============================================================================
+// DEMO MODE — versi asli halaman ini menghubungi agent EDC lokal
+// (http://localhost:9100) yang jalan di PC kasir sungguhan dan bicara ke
+// mesin EDC fisik lewat USB/serial. Prototype ini tidak punya agent/hardware
+// sungguhan, jadi diganti alur pilih-mesin yang disimulasikan sepenuhnya di
+// browser: pilih salah satu dari 2 mesin dummy, "terhubung" setelah jeda
+// singkat, lengkap dengan info port palsu supaya tetap terasa nyata.
+// ============================================================================
 "use client";
 
-import { useEffect, useState } from "react";
-import { Loader2, RefreshCw, Wifi, WifiOff, CreditCard, AlertTriangle } from "lucide-react";
+import { useState } from "react";
+import { Loader2, RefreshCw, Wifi, CreditCard, Check } from "lucide-react";
 import { Btn } from "../components/ui/Btn";
 import { useToast } from "../context/ToastContext";
 
-const AGENT_URL = "http://localhost:9100";
+type DeviceId = "biru" | "putih";
 
-interface AgentConfig {
-  serialPort: string;
-  frontendUrl: string;
-  listenPort: string;
+interface DeviceOption {
+  id: DeviceId;
+  name: string;
+  model: string;
+  swatchClass: string;
+  port: string;
 }
 
-type AgentState = "checking" | "not-running" | "ready";
+const DEVICES: DeviceOption[] = [
+  { id: "biru", name: "EDC BIRU", model: "PAX A920 Pro", swatchClass: "bg-[#2563EB]", port: "COM3" },
+  { id: "putih", name: "EDC PUTIH", model: "Verifone V240m", swatchClass: "bg-white border border-ink/20", port: "COM5" },
+];
+
+type Step = "select" | "connecting" | "connected";
 
 export function EdcSetupPage() {
   const { showToast } = useToast();
 
-  const [agentState, setAgentState] = useState<AgentState>("checking");
-  const [ports, setPorts] = useState<string[]>([]);
-  const [serialPort, setSerialPort] = useState("");
-  // frontendUrl SELALU diisi otomatis dari window.location.origin (alamat
-  // Nota POS yang sedang dibuka kasir SEKARANG ini) - PC kasir memang
-  // tidak perlu tahu/mengetik alamat apa pun selain yang sudah mereka buka
-  // di browser.
-  const [frontendUrl, setFrontendUrl] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [step, setStep] = useState<Step>("select");
+  const [device, setDevice] = useState<DeviceOption | null>(null);
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<"ok" | "fail" | null>(null);
+  const [testResult, setTestResult] = useState<"ok" | null>(null);
+  const frontendUrl = typeof window !== "undefined" ? window.location.origin : "";
 
-  function loadFromAgent() {
-    setAgentState("checking");
-    Promise.all([
-      fetch(`${AGENT_URL}/edc/config`).then((r) => {
-        if (!r.ok) throw new Error("agent tidak merespons");
-        return r.json() as Promise<AgentConfig>;
-      }),
-      fetch(`${AGENT_URL}/edc/ports`).then((r) => r.json() as Promise<{ ports: string[] }>),
-    ])
-      .then(([cfg, portsRes]) => {
-        setSerialPort(cfg.serialPort);
-        setPorts(portsRes.ports ?? []);
-        setAgentState("ready");
-      })
-      .catch(() => setAgentState("not-running"));
-  }
-  useEffect(loadFromAgent, []);
-
-  // Selalu pakai origin browser SAAT INI - bukan nilai yang tersimpan di
-  // agent - supaya kalau suatu saat alamat Nota POS berubah (ganti domain,
-  // pindah server), cukup buka halaman ini lagi dari alamat yang baru dan
-  // Simpan, tanpa perlu tahu/mengetik alamat apa pun secara manual.
-  useEffect(() => {
-    setFrontendUrl(window.location.origin);
-  }, []);
-
-  async function handleSave() {
-    if (!serialPort) {
-      showToast({ type: "error", message: "Pilih port USB dulu" });
-      return;
-    }
-    setSaving(true);
-    try {
-      const res = await fetch(`${AGENT_URL}/edc/config`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ serialPort, frontendUrl }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      showToast({ type: "success", message: "Pengaturan EDC disimpan", description: `Port: ${serialPort}` });
-      setTestResult(null);
-    } catch (err) {
-      showToast({ type: "error", message: "Gagal menyimpan", description: err instanceof Error ? err.message : undefined });
-    } finally {
-      setSaving(false);
-    }
+  function handleConnect(d: DeviceOption) {
+    setDevice(d);
+    setStep("connecting");
+    setTimeout(() => {
+      setStep("connected");
+      showToast({ type: "success", message: "Berhasil terhubung", description: `${d.name} (${d.port})` });
+    }, 1100);
   }
 
-  async function handleTest() {
+  function handleDisconnect() {
+    setStep("select");
+    setDevice(null);
+    setTestResult(null);
+  }
+
+  function handleTest() {
     setTesting(true);
     setTestResult(null);
-    try {
-      const res = await fetch(`${AGENT_URL}/edc/check-connection`);
-      setTestResult(res.ok ? "ok" : "fail");
-    } catch {
-      setTestResult("fail");
-    } finally {
+    setTimeout(() => {
       setTesting(false);
-    }
+      setTestResult("ok");
+    }, 700);
   }
 
-  if (agentState === "checking") {
-    return <div className="flex items-center gap-2 p-6 text-sm text-ink-soft"><Loader2 size={16} className="animate-spin" /> Menghubungi agent EDC di komputer ini…</div>;
-  }
-
-  if (agentState === "not-running") {
+  if (step === "select" || step === "connecting") {
     return (
       <div className="p-6">
-        <div className="mx-auto max-w-md rounded-xl border border-dashed border-alert/30 bg-white p-6 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-alert/10">
-            <WifiOff size={22} className="text-alert" />
+        <div className="mx-auto max-w-md">
+          <div className="mb-5">
+            <h1 className="font-display text-xl font-semibold">Pengaturan EDC</h1>
+            <p className="text-sm text-ink-soft">Pilih mesin EDC yang tersambung ke komputer ini.</p>
           </div>
-          <h3 className="font-display font-semibold text-ink">Agent EDC belum berjalan</h3>
-          <p className="mx-auto mt-2 max-w-sm text-sm text-ink-soft">
-            Jalankan dulu <code className="rounded bg-paper-dim px-1 py-0.5 font-mono text-xs">nota-edc-agent.exe</code> di komputer ini
-            (double-click file-nya), lalu kembali ke halaman ini.
-          </p>
-          <Btn cls="mt-4" ch={<><RefreshCw size={14} /> Coba Lagi</>} onClick={loadFromAgent} />
+
+          <div className="space-y-3">
+            {DEVICES.map((d) => {
+              const isConnectingThis = step === "connecting" && device?.id === d.id;
+              return (
+                <button
+                  key={d.id}
+                  onClick={() => step === "select" && handleConnect(d)}
+                  disabled={step === "connecting"}
+                  className="flex w-full items-center gap-4 rounded-xl border border-ink/10 bg-white p-4 text-left shadow-sm transition-colors hover:border-brass hover:bg-brass/5 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <span className={`h-10 w-10 flex-shrink-0 rounded-full ${d.swatchClass}`} />
+                  <span className="flex-1">
+                    <span className="block font-display font-semibold text-ink">{d.name}</span>
+                    <span className="block text-xs text-ink-soft">{d.model}</span>
+                  </span>
+                  {isConnectingThis ? (
+                    <Loader2 size={18} className="animate-spin text-brass" />
+                  ) : (
+                    <CreditCard size={18} className="text-ink-soft/50" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {step === "connecting" && (
+            <p className="mt-4 flex items-center gap-2 text-xs text-ink-soft">
+              <Loader2 size={13} className="animate-spin" /> Menghubungkan ke {device?.name}…
+            </p>
+          )}
         </div>
       </div>
     );
@@ -118,28 +113,17 @@ export function EdcSetupPage() {
     <div className="p-6">
       <div className="mx-auto max-w-md">
         <div className="mb-4 flex items-center gap-2 rounded-md bg-teal/10 px-3 py-2 text-xs text-teal">
-          <Wifi size={14} /> Agent EDC terdeteksi di komputer ini
+          <Wifi size={14} /> Terhubung ke {device?.name}
         </div>
 
         <div className="rounded-xl border border-ink/10 bg-white p-5 shadow-sm">
-          <label className="mb-4 block">
-            <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-ink-soft">Port USB mesin EDC</span>
-            {ports.length === 0 ? (
-              <p className="mb-2 flex items-center gap-1.5 text-xs text-alert">
-                <AlertTriangle size={12} /> Tidak ada port terdeteksi - pastikan kabel USB mesin EDC tersambung
-              </p>
-            ) : null}
-            <select value={serialPort} onChange={(e) => setSerialPort(e.target.value)} className="w-full rounded-md border border-ink/15 px-3 py-2 text-sm">
-              <option value="">Pilih port…</option>
-              {ports.map((p) => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-              {serialPort && !ports.includes(serialPort) && <option value={serialPort}>{serialPort} (tersimpan sebelumnya)</option>}
-            </select>
-            <button onClick={loadFromAgent} className="mt-1.5 flex items-center gap-1 text-xs text-ink-soft hover:text-ink">
-              <RefreshCw size={11} /> Deteksi ulang port
-            </button>
-          </label>
+          <div className="mb-4 flex items-center gap-3 rounded-md bg-paper-dim px-3 py-3">
+            <span className={`h-9 w-9 flex-shrink-0 rounded-full ${device?.swatchClass}`} />
+            <div>
+              <p className="font-display text-sm font-semibold text-ink">{device?.name}</p>
+              <p className="text-xs text-ink-soft">{device?.model} · Port {device?.port}</p>
+            </div>
+          </div>
 
           <div className="mb-4">
             <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-ink-soft">Alamat pelaporan (otomatis)</span>
@@ -150,20 +134,17 @@ export function EdcSetupPage() {
           </div>
 
           <div className="flex gap-2">
-            <Btn cls="flex-1 justify-center" disabled={saving} onClick={handleSave} ch={saving ? <><Loader2 size={14} className="animate-spin" /> Menyimpan…</> : "Simpan"} />
-            <Btn v="secondary" disabled={testing || !serialPort} onClick={handleTest} ch={testing ? <><Loader2 size={14} className="animate-spin" /> Menguji…</> : <><CreditCard size={14} /> Tes Koneksi</>} />
+            <Btn v="secondary" disabled={testing} onClick={handleTest} ch={testing ? <><Loader2 size={14} className="animate-spin" /> Menguji…</> : <><CreditCard size={14} /> Tes Koneksi</>} />
+            <Btn v="secondary" onClick={handleDisconnect} ch={<><RefreshCw size={14} /> Ganti Mesin</>} />
           </div>
 
           {testResult === "ok" && (
-            <p className="mt-3 flex items-center gap-1.5 text-xs text-teal"><Wifi size={13} /> Berhasil terhubung ke mesin EDC</p>
-          )}
-          {testResult === "fail" && (
-            <p className="mt-3 flex items-center gap-1.5 text-xs text-alert"><WifiOff size={13} /> Tidak bisa terhubung - cek kabel USB & port yang dipilih</p>
+            <p className="mt-3 flex items-center gap-1.5 text-xs text-teal"><Check size={13} /> Berhasil terhubung ke {device?.name}</p>
           )}
         </div>
 
         <p className="mt-4 text-xs text-ink-soft">
-          Pengaturan ini tersimpan di komputer ini saja (di agent EDC-nya) - kalau ganti komputer kasir, perlu diatur ulang di komputer yang baru.
+          Pengaturan ini tersimpan di komputer ini saja - kalau ganti komputer kasir, perlu dipilih ulang di komputer yang baru.
         </p>
       </div>
     </div>
