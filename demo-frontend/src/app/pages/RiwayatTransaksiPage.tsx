@@ -118,7 +118,7 @@ export function RiwayatTransaksiPage() {
           <p className="mx-auto mt-1 max-w-sm text-sm text-ink-soft">Transaksi yang sudah dibayar atau dibatalkan akan muncul di sini.</p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-ink/10 bg-white shadow-sm">
+        <div className="overflow-x-auto rounded-xl border border-ink/10 bg-white shadow-sm">
           <table className="w-full text-sm">
             <thead className="border-b border-ink/10 bg-paper-dim text-left text-xs uppercase tracking-wide text-ink-soft">
               <tr>

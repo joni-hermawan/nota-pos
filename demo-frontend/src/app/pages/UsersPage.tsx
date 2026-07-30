@@ -87,7 +87,7 @@ export function UsersPage() {
       ) : users.length === 0 ? (
         <p className="py-10 text-center text-sm text-ink-soft">Belum ada pengguna.</p>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-ink/10 bg-white shadow-sm">
+        <div className="overflow-x-auto rounded-xl border border-ink/10 bg-white shadow-sm">
           <table className="w-full text-sm">
             <thead className="border-b border-ink/10 bg-paper-dim text-left text-xs uppercase tracking-wide text-ink-soft">
               <tr>

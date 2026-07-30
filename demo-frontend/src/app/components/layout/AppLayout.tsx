@@ -40,14 +40,24 @@ function getInitialPage(allowed: PageId[]): PageId {
   return allowed[0];
 }
 
+// Breakpoint Tailwind `md` - di bawah ini sidebar penuh (240px) akan
+// memakan porsi layar yang terlalu besar, jadi mulai dalam keadaan
+// collapsed (mode ikon saja, 64px) dan otomatis collapse lagi setiap kali
+// pindah halaman, mirip pola nav drawer di aplikasi mobile pada umumnya.
+const MOBILE_BREAKPOINT_PX = 768;
+function isMobileViewport(): boolean {
+  return typeof window !== "undefined" && window.innerWidth < MOBILE_BREAKPOINT_PX;
+}
+
 export function AppLayout() {
   const { user, logout } = useAuth();
   const allowed = user ? effectivePages(user.role) : [];
   const [page, setPageState] = useState<PageId>(() => getInitialPage(allowed));
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(isMobileViewport);
 
   const setPage = (p: PageId) => {
     setPageState(p);
+    if (isMobileViewport()) setCollapsed(true);
     try {
       sessionStorage.setItem(ACTIVE_PAGE_KEY, p);
     } catch {

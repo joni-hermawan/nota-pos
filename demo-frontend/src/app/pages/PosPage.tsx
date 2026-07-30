@@ -126,8 +126,8 @@ function PosPageInner({ storeId }: { storeId: string }) {
   }
 
   return (
-    <div className="grid h-full grid-cols-[1fr_360px]">
-      <div className="overflow-y-auto p-6">
+    <div className="flex h-full flex-col overflow-y-auto lg:grid lg:grid-cols-[1fr_360px] lg:overflow-hidden">
+      <div className="p-6 lg:overflow-y-auto">
         <div className="mb-5 flex items-center gap-2 rounded-md border border-ink/15 bg-white px-3 py-2">
           <Search size={16} className="text-ink-soft" />
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cari produk…" className="w-full text-sm outline-none" />
@@ -166,12 +166,12 @@ function PosPageInner({ storeId }: { storeId: string }) {
         )}
       </div>
 
-      <div className="flex flex-col border-l border-ink/10 bg-white">
+      <div className="flex flex-col border-t border-ink/10 bg-white lg:border-l lg:border-t-0">
         <div className="border-b border-ink/10 px-5 py-4">
           <h2 className="font-display font-semibold">Keranjang</h2>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-3">
+        <div className="px-5 py-3 lg:flex-1 lg:overflow-y-auto">
           {cart.length === 0 && <p className="mt-10 text-center text-sm text-ink-soft">Belum ada item. Pilih produk di sebelah kiri.</p>}
           {cart.map((l) => (
             <div key={l.productId} className="mb-3 flex items-center justify-between gap-2">
@@ -189,7 +189,7 @@ function PosPageInner({ storeId }: { storeId: string }) {
           ))}
         </div>
 
-        <div className="border-t border-ink/10 px-5 py-4">
+        <div className="sticky bottom-0 border-t border-ink/10 bg-white px-5 py-4">
           {trxError && <p className="mb-3 rounded-md bg-alert/10 px-3 py-2 text-sm text-alert">{trxError}</p>}
 
           <div className="mb-4 flex items-center justify-between font-mono text-lg font-semibold tabular">
